@@ -1,0 +1,259 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Rol {
+  id       Int       @id @default(autoincrement())
+  nombre   String    @unique
+  usuarios Usuario[]
+
+  @@map("roles")
+}
+
+model Usuario {
+  id       Int     @id @default(autoincrement())
+  nombre   String
+  celular  String
+  ci       String? @unique
+  email    String? @unique
+  password String?
+
+  rolId Int @map("rol_id")
+  rol   Rol @relation(fields: [rolId], references: [id])
+
+  creadoEn DateTime @default(now()) @map("creado_en")
+
+  direcciones            Direccion[]
+  cajas                  Caja[]
+  pedidos                Pedido[]
+  movimientosSolicitados MovimientoCaja[] @relation("movimientos_solicitados")
+  movimientosAutorizados MovimientoCaja[] @relation("movimientos_autorizados")
+
+  @@map("usuarios")
+}
+
+model Categoria {
+  id          Int      @id @default(autoincrement())
+  nombre      String   @unique
+  descripcion String?
+  creadoEn    DateTime @default(now()) @map("creado_en")
+
+  productos Producto[]
+
+  @@map("categorias")
+}
+
+model Producto {
+  id               Int     @id @default(autoincrement())
+  codigo           String  @unique
+  nombre           String
+  descripcion      String?
+  precioActual     Decimal @map("precio_actual") @db.Decimal(10, 2)
+  costoAdquisicion Decimal @map("costo_adquisicion") @db.Decimal(10, 2)
+  stock            Int     @default(0)
+  activo           Boolean @default(true)
+
+  categoriaId Int       @map("categoria_id")
+  categoria   Categoria @relation(fields: [categoriaId], references: [id])
+
+  creadoEn        DateTime        @default(now()) @map("creado_en")
+  detallesVentas  DetalleVenta[]
+  detallesPedidos DetallePedido[]
+
+  @@map("productos")
+}
+
+model Direccion {
+  id        Int @id @default(autoincrement())
+  usuarioId Int @map("usuario_id")
+
+  departamento String
+  ciudad       String
+  zona         String
+  calle        String
+  numero       String?
+  referencia   String?
+
+  usuario Usuario  @relation(fields: [usuarioId], references: [id])
+  pedidos Pedido[]
+
+  @@map("direcciones")
+}
+
+model Caja {
+  id            Int       @id @default(autoincrement())
+  usuarioId     Int       @map("usuario_id")
+  montoApertura Decimal   @map("monto_apertura") @db.Decimal(10, 2)
+  montoCierre   Decimal?  @map("monto_cierre") @db.Decimal(10, 2)
+  fechaApertura DateTime  @default(now()) @map("fecha_apertura")
+  fechaCierre   DateTime? @map("fecha_cierre")
+
+  usuario     Usuario          @relation(fields: [usuarioId], references: [id])
+  ventas      Venta[]
+  movimientos MovimientoCaja[]
+
+  @@map("cajas")
+}
+
+model Pedido {
+  id Int @id @default(autoincrement())
+
+  usuarioId   Int  @map("usuario_id")
+  direccionId Int? @map("direccion_id")
+
+  destinatario        String
+  celularDestinatario String @map("celular_destinatario")
+
+  departamento String
+  ciudad       String
+  zona         String
+  calle        String
+  numero       String?
+  referencia   String?
+
+  total Decimal @db.Decimal(10, 2)
+
+  estado EstadoPedido @default(PENDIENTE)
+  origen OrigenPedido @default(WEB)
+
+  referenciaEntrega String? @map("referencia_entrega")
+
+  creadoEn DateTime @default(now()) @map("creado_en")
+
+  usuario   Usuario    @relation(fields: [usuarioId], references: [id])
+  direccion Direccion? @relation(fields: [direccionId], references: [id])
+
+  detalles DetallePedido[]
+  reservas Reserva[]
+
+  @@map("pedidos")
+}
+
+enum EstadoPedido {
+  PENDIENTE
+  PAGADO
+  EN_TRANSITO
+  ENTREGADO
+  CANCELADO
+
+  @@map("estado_pedido")
+}
+
+enum OrigenPedido {
+  WEB
+  FACEBOOK
+  WHATSAPP
+  OTRO
+
+  @@map("origen_pedido")
+}
+
+model Venta {
+  id         Int        @id @default(autoincrement())
+  cajaId     Int        @map("caja_id")
+  total      Decimal    @db.Decimal(10, 2)
+  metodoPago MetodoPago @map("metodo_pago")
+  creadoEn   DateTime   @default(now()) @map("creado_en")
+
+  caja     Caja           @relation(fields: [cajaId], references: [id])
+  detalles DetalleVenta[]
+
+  @@map("ventas")
+}
+
+model DetalleVenta {
+  id             Int     @id @default(autoincrement())
+  ventaId        Int     @map("venta_id")
+  productoId     Int     @map("producto_id")
+  cantidad       Int
+  precioUnitario Decimal @map("precio_unitario") @db.Decimal(10, 2)
+
+  venta    Venta    @relation(fields: [ventaId], references: [id])
+  producto Producto @relation(fields: [productoId], references: [id])
+
+  @@unique([ventaId, productoId])
+  @@map("detalle_ventas")
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TARJETA
+  QR
+
+  @@map("metodo_pago")
+}
+
+model DetallePedido {
+  id             Int     @id @default(autoincrement())
+  pedidoId       Int     @map("pedido_id")
+  productoId     Int     @map("producto_id")
+  cantidad       Int
+  precioUnitario Decimal @map("precio_unitario") @db.Decimal(10, 2)
+
+  pedido   Pedido   @relation(fields: [pedidoId], references: [id])
+  producto Producto @relation(fields: [productoId], references: [id])
+
+  @@unique([pedidoId, productoId])
+  @@map("detalle_pedidos")
+}
+
+model Reserva {
+  id       Int           @id @default(autoincrement())
+  pedidoId Int           @map("pedido_id")
+  creadaEn DateTime      @default(now()) @map("creada_en")
+  expiraEn DateTime      @map("expira_en")
+  estado   EstadoReserva @default(ACTIVA)
+
+  pedido Pedido @relation(fields: [pedidoId], references: [id])
+
+  @@map("reservas")
+}
+
+enum EstadoReserva {
+  ACTIVA
+  CONFIRMADA
+  EXPIRADA
+  CANCELADA
+
+  @@map("estado_reserva")
+}
+
+model MovimientoCaja {
+  id            Int  @id @default(autoincrement())
+  cajaId        Int  @map("caja_id")
+  solicitadoPor Int  @map("solicitado_por")
+  autorizadoPor Int? @map("autorizado_por")
+
+  tipo   TipoMovimientoCaja
+  monto  Decimal              @db.Decimal(10, 2)
+  motivo String
+  estado EstadoMovimientoCaja @default(PENDIENTE)
+
+  creadoEn DateTime @default(now()) @map("creado_en")
+
+  caja        Caja     @relation(fields: [cajaId], references: [id])
+  solicitante Usuario  @relation("movimientos_solicitados", fields: [solicitadoPor], references: [id])
+  autorizador Usuario? @relation("movimientos_autorizados", fields: [autorizadoPor], references: [id])
+
+  @@map("movimientos_caja")
+}
+
+enum TipoMovimientoCaja {
+  ENTRADA
+  SALIDA
+
+  @@map("tipo_movimiento_caja")
+}
+
+enum EstadoMovimientoCaja {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+
+  @@map("estado_movimiento_caja")
+}
