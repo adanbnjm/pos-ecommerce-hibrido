@@ -11,13 +11,14 @@ import { ActualizarProductoDto } from './dto/actualizar-producto.dto.js';
 export class ProductosService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async obtenerTodos(soloActivos = false) {
+  async obtenerTodos(soloActivos?: boolean) {
     return this.prisma.producto.findMany({
-      where: soloActivos
-        ? {
-            activo: true,
-          }
-        : undefined,
+      where:
+        soloActivos === undefined
+          ? undefined
+          : {
+              activo: soloActivos,
+            },
       orderBy: {
         nombre: 'asc',
       },
