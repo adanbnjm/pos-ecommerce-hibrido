@@ -4,6 +4,6 @@ import { VentasService } from './ventas.service.js';
 
 @Module({
   controllers: [VentasController],
-  providers: [VentasService]
+  providers: [VentasService],
 })
 export class VentasModule {}

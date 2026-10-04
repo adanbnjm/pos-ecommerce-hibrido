@@ -7,13 +7,13 @@ import {
   Min,
   ValidateNested,
   registerDecorator,
-  ValidationArguments,
   ValidationOptions,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { MetodoPago } from '../../../generated/prisma/enums.js';
 
-class CrearDetalleVentaDto {
+import { OrigenPedido } from '../../../generated/prisma/enums.js';
+
+class CrearDetallePedidoDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
@@ -33,34 +33,39 @@ function ProductosUnicos(validationOptions?: ValidationOptions) {
       propertyName: propiedad,
       options: validationOptions,
       validator: {
-        validate(detalles: CrearDetalleVentaDto[]) {
+        validate(detalles: CrearDetallePedidoDto[]) {
           const ids = detalles.map((detalle) => detalle.productoId);
 
           return new Set(ids).size === ids.length;
         },
 
         defaultMessage() {
-          return 'No se puede repetir un producto dentro de la venta';
+          return 'No se puede repetir un producto dentro del pedido';
         },
       },
     });
   };
 }
 
-export class CrearVentaDto {
+export class CrearPedidoDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  cajaId: number;
+  usuarioId: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  direccionId: number;
 
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
-  @Type(() => CrearDetalleVentaDto)
+  @Type(() => CrearDetallePedidoDto)
   @ProductosUnicos()
-  detalles: CrearDetalleVentaDto[];
+  detalles: CrearDetallePedidoDto[];
 
-  @IsEnum(MetodoPago)
+  @IsEnum(OrigenPedido)
   @IsNotEmpty()
-  metodoPago: MetodoPago;
+  origen: OrigenPedido;
 }

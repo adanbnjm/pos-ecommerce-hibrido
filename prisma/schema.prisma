@@ -130,10 +130,38 @@ model Pedido {
 
   detalles DetallePedido[]
   reservas Reserva[]
+  pagos Pago[]
 
   @@map("pedidos")
 }
+model Pago {
+  id         Int         @id @default(autoincrement())
+  pedidoId   Int         @map("pedido_id")
+  monto      Decimal     @db.Decimal(10, 2)
+  moneda     MonedaPago  @default(BOB)
+  estado     EstadoPago  @default(PENDIENTE)
+  referencia String?
+  creadoEn   DateTime    @default(now()) @map("creado_en")
 
+  pedido Pedido @relation(fields: [pedidoId], references: [id])
+
+  @@map("pagos")
+}
+
+enum EstadoPago {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+
+  @@map("estado_pago")
+}
+
+enum MonedaPago {
+  BOB
+  USD
+
+  @@map("moneda_pago")
+}
 enum EstadoPedido {
   PENDIENTE
   PAGADO
