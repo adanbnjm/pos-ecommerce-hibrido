@@ -23,13 +23,18 @@ async function main() {
       create: { nombre },
     });
   }
-  const rolCajero = await prisma.rol.findUniqueOrThrow({
-    where: { nombre: 'CAJERO' },
-  });
 
   const rolAdmin = await prisma.rol.findUniqueOrThrow({
     where: { nombre: 'ADMIN' },
   });
+
+  const rolCliente = await prisma.rol.findUniqueOrThrow({
+    where: { nombre: 'CLIENTE' },
+  });
+
+  // =========================
+  // USUARIOS
+  // =========================
 
   await prisma.usuario.upsert({
     where: { email: 'admin@pos.local' },
@@ -43,6 +48,21 @@ async function main() {
       email: 'admin@pos.local',
       password: '$2b$10$XmEZfDniSgbF7NQJtl4.aef/gvlFF2Nau2qmqYEo320VjM4TlXVOW',
       rolId: rolAdmin.id,
+    },
+  });
+
+  await prisma.usuario.upsert({
+    where: { email: 'cliente@pos.local' },
+    update: {
+      password: '$2b$10$YtESMmRhshws52zQjcMO.ObWRX15pk2GITg0MReEVi1ph3BWqcLWe',
+      rolId: rolCliente.id,
+    },
+    create: {
+      nombre: 'Cliente de Prueba',
+      celular: '70000003',
+      email: 'cliente@pos.local',
+      password: '$2b$10$YtESMmRhshws52zQjcMO.ObWRX15pk2GITg0MReEVi1ph3BWqcLWe',
+      rolId: rolCliente.id,
     },
   });
 
@@ -81,6 +101,7 @@ async function main() {
   console.log('Categorías iniciales creadas correctamente.');
 
   // Buscamos las categorías para obtener sus IDs
+
   const categoriaLubricantes = await prisma.categoria.findUniqueOrThrow({
     where: { nombre: 'Lubricantes' },
   });
