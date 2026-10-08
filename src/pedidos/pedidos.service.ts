@@ -185,10 +185,13 @@ export class PedidosService {
       pedido: resultado,
     };
   }
-  async expirarReserva(reservaId: number) {
-    const reserva = await this.prisma.reserva.findUnique({
+  async expirarReserva(usuarioId: number, reservaId: number) {
+    const reserva = await this.prisma.reserva.findFirst({
       where: {
         id: reservaId,
+        pedido: {
+          usuarioId,
+        },
       },
     });
 
@@ -217,6 +220,56 @@ export class PedidosService {
       mensaje: 'Reserva expirada correctamente',
       reserva: reservaActualizada,
     };
+  }
+  async obtenerPedidos(usuarioId: number, rol: string) {
+    const pedidos = await this.prisma.pedido.findMany({
+      where:
+        rol === 'CLIENTE'
+          ? {
+              usuarioId,
+            }
+          : undefined,
+      include: {
+        detalles: {
+          include: {
+            producto: true,
+          },
+        },
+        reservas: true,
+        pagos: true,
+        direccion: true,
+      },
+      orderBy: {
+        creadoEn: 'desc',
+      },
+    });
+
+    return pedidos;
+  }
+
+  async obtenerPedido(usuarioId: number, rol: string, pedidoId: number) {
+    const pedido = await this.prisma.pedido.findFirst({
+      where: {
+        id: pedidoId,
+        ...(rol === 'CLIENTE' ? { usuarioId } : {}),
+      },
+      include: {
+        detalles: {
+          include: {
+            producto: true,
+          },
+        },
+        reservas: true,
+        pagos: true,
+        direccion: true,
+      },
+    });
+
+    if (!pedido) {
+      throw new NotFoundException('Pedido no encontrado');
+    }
+
+    return pedido;
   }
   async cancelarPedido(usuarioId: number, pedidoId: number) {
     const pedido = await this.prisma.pedido.findFirst({

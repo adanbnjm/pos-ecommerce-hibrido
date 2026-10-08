@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseIntPipe,
   Post,
@@ -22,6 +23,43 @@ import { Roles } from '../auth/decorators/roles/roles.decorator.js';
 @Controller('pedidos')
 export class PedidosController {
   constructor(private readonly pedidosService: PedidosService) {}
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  obtenerPedidos(
+    @Req()
+    solicitud: Request & {
+      user: {
+        id: number;
+        email: string | null;
+        rol: string;
+      };
+    },
+  ) {
+    return this.pedidosService.obtenerPedidos(
+      solicitud.user.id,
+      solicitud.user.rol,
+    );
+  }
+
+  @Get(':pedidoId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  obtenerPedido(
+    @Req()
+    solicitud: Request & {
+      user: {
+        id: number;
+        email: string | null;
+        rol: string;
+      };
+    },
+    @Param('pedidoId', ParseIntPipe) pedidoId: number,
+  ) {
+    return this.pedidosService.obtenerPedido(
+      solicitud.user.id,
+      solicitud.user.rol,
+      pedidoId,
+    );
+  }
 
   @Post()
   @Roles('CLIENTE')
@@ -43,8 +81,18 @@ export class PedidosController {
   @Post('reservas/:reservaId/expirar')
   @Roles('CLIENTE')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  expirarReserva(@Param('reservaId', ParseIntPipe) reservaId: number) {
-    return this.pedidosService.expirarReserva(reservaId);
+  expirarReserva(
+    @Req()
+    solicitud: Request & {
+      user: {
+        id: number;
+        email: string | null;
+        rol: string;
+      };
+    },
+    @Param('reservaId', ParseIntPipe) reservaId: number,
+  ) {
+    return this.pedidosService.expirarReserva(solicitud.user.id, reservaId);
   }
 
   @Post(':pedidoId/cancelar')

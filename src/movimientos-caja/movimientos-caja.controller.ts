@@ -5,9 +5,12 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
 
 import { CrearMovimientoCajaDto } from './dto/crear-movimiento-caja.dto.js';
 import { ResolverMovimientoCajaDto } from './dto/resolver-movimiento-caja.dto.js';
@@ -25,25 +28,39 @@ export class MovimientosCajaController {
     private readonly movimientosCajaService: MovimientosCajaService,
   ) {}
 
-  @Post('caja/:cajaId/solicitar/:usuarioId')
+  @Post('caja/:cajaId/solicitar')
   @Roles('ADMIN', 'CAJERO')
   @UseGuards(JwtAuthGuard, RolesGuard)
   crear(
     @Param('cajaId', ParseIntPipe) cajaId: number,
-    @Param('usuarioId', ParseIntPipe) usuarioId: number,
+    @Req()
+    solicitud: Request & {
+      user: {
+        id: number;
+        email: string | null;
+        rol: string;
+      };
+    },
     @Body() datos: CrearMovimientoCajaDto,
   ) {
-    return this.movimientosCajaService.crear(cajaId, usuarioId, datos);
+    return this.movimientosCajaService.crear(cajaId, solicitud.user.id, datos);
   }
 
-  @Patch(':id/resolver/:usuarioId')
+  @Patch(':id/resolver')
   @Roles('ADMIN')
   @UseGuards(JwtAuthGuard, RolesGuard)
   resolver(
     @Param('id', ParseIntPipe) id: number,
-    @Param('usuarioId', ParseIntPipe) usuarioId: number,
+    @Req()
+    solicitud: Request & {
+      user: {
+        id: number;
+        email: string | null;
+        rol: string;
+      };
+    },
     @Body() datos: ResolverMovimientoCajaDto,
   ) {
-    return this.movimientosCajaService.resolver(id, usuarioId, datos);
+    return this.movimientosCajaService.resolver(id, solicitud.user.id, datos);
   }
 }

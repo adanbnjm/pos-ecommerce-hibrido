@@ -50,14 +50,14 @@ export class CajasService {
     };
   }
 
-  async cerrar(cajaId: number, datos: CerrarCajaDto) {
+  async cerrar(usuarioId: number, cajaId: number, datos: CerrarCajaDto) {
     // 1. Buscar la caja
-    const caja = await this.prisma.caja.findUnique({
+    const caja = await this.prisma.caja.findFirst({
       where: {
         id: cajaId,
+        usuarioId,
       },
     });
-
     if (!caja) {
       throw new NotFoundException('Caja no encontrada');
     }

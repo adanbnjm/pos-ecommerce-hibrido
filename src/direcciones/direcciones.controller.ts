@@ -1,12 +1,6 @@
-import {
-  Body,
-  Controller,
-  Param,
-  ParseIntPipe,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
 
 import { CrearDireccionDto } from './dto/crear-direccion.dto.js';
 import { DireccionesService } from './direcciones.service.js';
@@ -21,13 +15,20 @@ import { Roles } from '../auth/decorators/roles/roles.decorator.js';
 export class DireccionesController {
   constructor(private readonly direccionesService: DireccionesService) {}
 
-  @Post('usuario/:usuarioId')
+  @Post()
   @Roles('CLIENTE')
   @UseGuards(JwtAuthGuard, RolesGuard)
   crear(
-    @Param('usuarioId', ParseIntPipe) usuarioId: number,
+    @Req()
+    solicitud: Request & {
+      user: {
+        id: number;
+        email: string | null;
+        rol: string;
+      };
+    },
     @Body() datos: CrearDireccionDto,
   ) {
-    return this.direccionesService.crear(usuarioId, datos);
+    return this.direccionesService.crear(solicitud.user.id, datos);
   }
 }
