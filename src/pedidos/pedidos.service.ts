@@ -11,10 +11,10 @@ import { CrearPedidoDto } from './dto/crear-pedido.dto.js';
 export class PedidosService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async crear(datos: CrearPedidoDto) {
+  async crear(usuarioId: number, datos: CrearPedidoDto) {
     // 1. Verificar que el usuario exista
     const usuario = await this.prisma.usuario.findUnique({
-      where: { id: datos.usuarioId },
+      where: { id: usuarioId },
     });
 
     if (!usuario) {
@@ -25,7 +25,7 @@ export class PedidosService {
     const direccion = await this.prisma.direccion.findFirst({
       where: {
         id: datos.direccionId,
-        usuarioId: datos.usuarioId,
+        usuarioId: usuarioId,
       },
     });
 
@@ -218,14 +218,13 @@ export class PedidosService {
       reserva: reservaActualizada,
     };
   }
-  async cancelarPedido(pedidoId: number) {
-    const pedido = await this.prisma.pedido.findUnique({
+  async cancelarPedido(usuarioId: number, pedidoId: number) {
+    const pedido = await this.prisma.pedido.findFirst({
       where: {
         id: pedidoId,
+        usuarioId,
       },
-      include: {
-        reservas: true,
-      },
+      include: { reservas: true },
     });
 
     if (!pedido) {

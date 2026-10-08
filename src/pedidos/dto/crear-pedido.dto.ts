@@ -51,11 +51,6 @@ export class CrearPedidoDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  usuarioId: number;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
   direccionId: number;
 
   @IsArray()

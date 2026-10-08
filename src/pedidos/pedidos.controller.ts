@@ -4,9 +4,11 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
 
 import { CrearPedidoDto } from './dto/crear-pedido.dto.js';
 import { PedidosService } from './pedidos.service.js';
@@ -24,8 +26,18 @@ export class PedidosController {
   @Post()
   @Roles('CLIENTE')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  crear(@Body() datos: CrearPedidoDto) {
-    return this.pedidosService.crear(datos);
+  crear(
+    @Req()
+    solicitud: Request & {
+      user: {
+        id: number;
+        email: string | null;
+        rol: string;
+      };
+    },
+    @Body() datos: CrearPedidoDto,
+  ) {
+    return this.pedidosService.crear(solicitud.user.id, datos);
   }
 
   @Post('reservas/:reservaId/expirar')
@@ -38,8 +50,18 @@ export class PedidosController {
   @Post(':pedidoId/cancelar')
   @Roles('CLIENTE')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  cancelarPedido(@Param('pedidoId', ParseIntPipe) pedidoId: number) {
-    return this.pedidosService.cancelarPedido(pedidoId);
+  cancelarPedido(
+    @Req()
+    solicitud: Request & {
+      user: {
+        id: number;
+        email: string | null;
+        rol: string;
+      };
+    },
+    @Param('pedidoId', ParseIntPipe) pedidoId: number,
+  ) {
+    return this.pedidosService.cancelarPedido(solicitud.user.id, pedidoId);
   }
 
   @Post(':pedidoId/enviar')
