@@ -6,10 +6,29 @@ import {
 
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CrearPedidoDto } from './dto/crear-pedido.dto.js';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { CrearPedidoManualDto } from './dto/crear-pedido-manual.dto.js';
 
 @Injectable()
 export class PedidosService {
   constructor(private readonly prisma: PrismaService) {}
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async expirarReservasVencidas() {
+    const resultado = await this.prisma.reserva.updateMany({
+      where: {
+        estado: 'ACTIVA',
+        expiraEn: {
+          lte: new Date(),
+        },
+      },
+      data: {
+        estado: 'EXPIRADA',
+      },
+    });
+
+    return resultado.count;
+  }
 
   async crear(usuarioId: number, datos: CrearPedidoDto) {
     // 1. Verificar que el usuario exista
@@ -185,6 +204,184 @@ export class PedidosService {
       pedido: resultado,
     };
   }
+  async crearPedidoManual(datos: CrearPedidoManualDto) {
+    // 1. Buscar el rol CLIENTE para el usuario interno
+    const rolCliente = await this.prisma.rol.findUnique({
+      where: {
+        nombre: 'CLIENTE',
+      },
+    });
+
+    if (!rolCliente) {
+      throw new NotFoundException('El rol CLIENTE no está registrado');
+    }
+
+    // 2. Evitar productos repetidos
+    const idsProductos = datos.detalles.map((detalle) => detalle.productoId);
+
+    if (new Set(idsProductos).size !== idsProductos.length) {
+      throw new BadRequestException(
+        'No se puede repetir un producto dentro del pedido',
+      );
+    }
+
+    // 3. Buscar los productos solicitados
+    const productos = await this.prisma.producto.findMany({
+      where: {
+        id: {
+          in: idsProductos,
+        },
+      },
+    });
+
+    if (productos.length !== idsProductos.length) {
+      throw new NotFoundException('Uno o más productos no fueron encontrados');
+    }
+
+    // 4. Comprobar que todos los productos estén activos
+    const productoInactivo = productos.find((producto) => !producto.activo);
+
+    if (productoInactivo) {
+      throw new BadRequestException(
+        `El producto "${productoInactivo.nombre}" está inactivo`,
+      );
+    }
+
+    // 5. Buscar las reservas que todavía están activas
+    const reservasActivas = await this.prisma.reserva.findMany({
+      where: {
+        estado: 'ACTIVA',
+        expiraEn: {
+          gt: new Date(),
+        },
+        pedido: {
+          detalles: {
+            some: {
+              productoId: {
+                in: idsProductos,
+              },
+            },
+          },
+        },
+      },
+      include: {
+        pedido: {
+          include: {
+            detalles: true,
+          },
+        },
+      },
+    });
+
+    // 6. Calcular el stock que ya está reservado
+    const stockReservado = new Map<number, number>();
+
+    for (const reserva of reservasActivas) {
+      for (const detalle of reserva.pedido.detalles) {
+        const cantidadActual = stockReservado.get(detalle.productoId) ?? 0;
+
+        stockReservado.set(
+          detalle.productoId,
+          cantidadActual + detalle.cantidad,
+        );
+      }
+    }
+
+    // 7. Verificar disponibilidad y calcular el total
+    const productosPorId = new Map(
+      productos.map((producto) => [producto.id, producto]),
+    );
+
+    let total = 0;
+
+    for (const detalle of datos.detalles) {
+      const producto = productosPorId.get(detalle.productoId);
+
+      if (!producto) {
+        throw new NotFoundException(
+          `Producto ${detalle.productoId} no encontrado`,
+        );
+      }
+
+      const reservado = stockReservado.get(producto.id) ?? 0;
+      const disponible = producto.stock - reservado;
+
+      if (detalle.cantidad > disponible) {
+        throw new BadRequestException(
+          `Stock insuficiente para "${producto.nombre}". Disponible: ${disponible}`,
+        );
+      }
+
+      total += Number(producto.precioActual) * detalle.cantidad;
+    }
+
+    // 8. Crear usuario, pedido, detalles y reserva en una transacción
+    const resultado = await this.prisma.$transaction(async (tx) => {
+      const usuario = await tx.usuario.create({
+        data: {
+          nombre: datos.destinatario,
+          celular: datos.celularDestinatario,
+          rolId: rolCliente.id,
+        },
+      });
+
+      const pedido = await tx.pedido.create({
+        data: {
+          usuarioId: usuario.id,
+
+          destinatario: datos.destinatario,
+          celularDestinatario: datos.celularDestinatario,
+
+          departamento: datos.departamento,
+          ciudad: datos.ciudad,
+          zona: datos.zona,
+          calle: datos.calle,
+          numero: datos.numero,
+          referencia: datos.referencia,
+
+          total,
+          estado: 'PENDIENTE',
+          origen: datos.origen,
+        },
+      });
+
+      for (const detalle of datos.detalles) {
+        const producto = productosPorId.get(detalle.productoId);
+
+        if (!producto) {
+          throw new NotFoundException(
+            `Producto ${detalle.productoId} no encontrado`,
+          );
+        }
+
+        await tx.detallePedido.create({
+          data: {
+            pedidoId: pedido.id,
+            productoId: producto.id,
+            cantidad: detalle.cantidad,
+            precioUnitario: producto.precioActual,
+          },
+        });
+      }
+
+      const expiraEn = new Date(Date.now() + 15 * 60 * 1000);
+
+      await tx.reserva.create({
+        data: {
+          pedidoId: pedido.id,
+          expiraEn,
+          estado: 'ACTIVA',
+        },
+      });
+
+      return pedido;
+    });
+
+    return {
+      mensaje: 'Pedido manual creado correctamente',
+      pedido: resultado,
+    };
+  }
   async expirarReserva(usuarioId: number, reservaId: number) {
     const reserva = await this.prisma.reserva.findFirst({
       where: {
@@ -232,7 +429,17 @@ export class PedidosService {
       include: {
         detalles: {
           include: {
-            producto: true,
+            producto: {
+              select: {
+                id: true,
+                codigo: true,
+                nombre: true,
+                descripcion: true,
+                precioActual: true,
+                stock: true,
+                categoriaId: true,
+              },
+            },
           },
         },
         reservas: true,
@@ -256,7 +463,17 @@ export class PedidosService {
       include: {
         detalles: {
           include: {
-            producto: true,
+            producto: {
+              select: {
+                id: true,
+                codigo: true,
+                nombre: true,
+                descripcion: true,
+                precioActual: true,
+                stock: true,
+                categoriaId: true,
+              },
+            },
           },
         },
         reservas: true,

@@ -24,9 +24,8 @@ export class MockPayService {
       body: JSON.stringify({
         amount: datos.amount,
         currency: datos.currency,
-        metadata: {
-          order_id: String(datos.orderId),
-        },
+        metadata: { order_id: String(datos.orderId) },
+        webhook_url: 'https://pos-ecommerce-hibrido.onrender.com/pagos/webhook',
       }),
     });
 

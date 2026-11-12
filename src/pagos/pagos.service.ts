@@ -150,6 +150,32 @@ export class PagosService {
         pago,
       };
     }
+    // Comprobar que el monto recibido coincida con el pago registrado.
+    const montoRegistrado = Math.round(Number(pago.monto) * 100);
+    const montoRecibido = Math.round(datos.amount * 100);
+
+    if (montoRegistrado !== montoRecibido) {
+      throw new BadRequestException(
+        'El monto recibido no coincide con el pago registrado',
+      );
+    }
+
+    // Comprobar que la moneda coincida.
+    if (pago.moneda !== datos.currency) {
+      throw new BadRequestException(
+        'La moneda recibida no coincide con la moneda del pago',
+      );
+    }
+
+    // Comprobar que el evento y el estado sean coherentes.
+    if (
+      (datos.event === 'payment.succeeded' && datos.status !== 'SUCCEEDED') ||
+      (datos.event === 'payment.failed' && datos.status !== 'FAILED')
+    ) {
+      throw new BadRequestException(
+        'El evento recibido no coincide con el estado de la transacción',
+      );
+    }
 
     if (datos.event === 'payment.failed') {
       const pagoRechazado = await this.prisma.pago.update({

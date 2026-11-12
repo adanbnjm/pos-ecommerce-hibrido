@@ -33,7 +33,19 @@ import { Roles } from '../auth/decorators/roles/roles.decorator.js';
 @Controller('productos')
 export class ProductosController {
   constructor(private readonly productosService: ProductosService) {}
-
+  @Get('catalogo')
+  @ApiOperation({
+    summary: 'Consultar catálogo público',
+    description:
+      'Obtiene los productos activos sin requerir autenticación. No expone el costo de adquisición.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Catálogo público obtenido correctamente.',
+  })
+  obtenerCatalogoPublico() {
+    return this.productosService.obtenerCatalogoPublico();
+  }
   @Get()
   @Roles('ADMIN', 'CAJERO')
   @UseGuards(JwtAuthGuard, RolesGuard)

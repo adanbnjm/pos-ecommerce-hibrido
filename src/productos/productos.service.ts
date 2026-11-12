@@ -24,7 +24,25 @@ export class ProductosService {
       },
     });
   }
-
+  async obtenerCatalogoPublico() {
+    return this.prisma.producto.findMany({
+      where: {
+        activo: true,
+      },
+      orderBy: {
+        nombre: 'asc',
+      },
+      select: {
+        id: true,
+        codigo: true,
+        nombre: true,
+        descripcion: true,
+        precioActual: true,
+        stock: true,
+        categoriaId: true,
+      },
+    });
+  }
   async obtenerPorId(id: number) {
     const producto = await this.prisma.producto.findUnique({
       where: {

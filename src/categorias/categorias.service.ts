@@ -18,6 +18,18 @@ export class CategoriasService {
       },
     });
   }
+  async obtenerCatalogoPublico() {
+    return this.prisma.categoria.findMany({
+      orderBy: {
+        nombre: 'asc',
+      },
+      select: {
+        id: true,
+        nombre: true,
+        descripcion: true,
+      },
+    });
+  }
 
   async obtenerPorId(id: number) {
     const categoria = await this.prisma.categoria.findUnique({

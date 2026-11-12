@@ -20,6 +20,7 @@ import type { Request } from 'express';
 
 import { CrearPedidoDto } from './dto/crear-pedido.dto.js';
 import { PedidosService } from './pedidos.service.js';
+import { CrearPedidoManualDto } from './dto/crear-pedido-manual.dto.js';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles/roles.guard.js';
@@ -186,6 +187,55 @@ export class PedidosController {
     @Body() datos: CrearPedidoDto,
   ) {
     return this.pedidosService.crear(solicitud.user.id, datos);
+  }
+  @Post('manual')
+  @Roles('ADMIN', 'CAJERO')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Registrar pedido manual',
+    description:
+      'Permite a ADMIN y CAJERO registrar pedidos recibidos por Facebook, WhatsApp u otros canales.',
+  })
+  @ApiBody({
+    description: 'Datos del destinatario, dirección y productos del pedido.',
+    schema: {
+      example: {
+        destinatario: 'Carlos Pérez',
+        celularDestinatario: '70012345',
+        departamento: 'Santa Cruz',
+        ciudad: 'Santa Cruz de la Sierra',
+        zona: 'Equipetrol',
+        calle: 'Av. San Martín',
+        numero: '123',
+        referencia: 'Edificio de oficinas',
+        detalles: [
+          {
+            productoId: 2,
+            cantidad: 1,
+          },
+          {
+            productoId: 5,
+            cantidad: 2,
+          },
+        ],
+        origen: 'WHATSAPP',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Pedido manual creado correctamente.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Datos inválidos o stock insuficiente.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Solo ADMIN y CAJERO pueden registrar pedidos manuales.',
+  })
+  crearManual(@Body() datos: CrearPedidoManualDto) {
+    return this.pedidosService.crearPedidoManual(datos);
   }
 
   @Post('reservas/:reservaId/expirar')

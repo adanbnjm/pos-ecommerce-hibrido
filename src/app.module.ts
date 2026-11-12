@@ -12,9 +12,11 @@ import { DireccionesModule } from './direcciones/direcciones.module.js';
 import { PedidosModule } from './pedidos/pedidos.module.js';
 import { PagosModule } from './pagos/pagos.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     CategoriasModule,

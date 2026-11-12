@@ -7,6 +7,17 @@ import { CrearDireccionDto } from './dto/crear-direccion.dto.js';
 export class DireccionesService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async obtenerTodas(usuarioId: number) {
+    return this.prisma.direccion.findMany({
+      where: {
+        usuarioId,
+      },
+      orderBy: {
+        id: 'desc',
+      },
+    });
+  }
+
   async crear(usuarioId: number, datos: CrearDireccionDto) {
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: usuarioId },

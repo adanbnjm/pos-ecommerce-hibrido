@@ -7,17 +7,33 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { RegistroClienteDto } from './dto/registro-cliente.dto.js';
 
 import type { Request } from 'express';
 
 import { LoginDto } from './dto/login.dto.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
+import { CrearPersonalDto } from './dto/crear-personal.dto.js';
+import { Roles } from './decorators/roles/roles.decorator.js';
+import { RolesGuard } from './guards/roles/roles.guard.js';
 
 @ApiTags('Autenticación')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post('registro')
+  registro(@Body() datos: RegistroClienteDto) {
+    return this.authService.registrarCliente(datos);
+  }
+  @Post('personal')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth('JWT-auth')
+  crearPersonal(@Body() datos: CrearPersonalDto) {
+    return this.authService.crearPersonal(datos);
+  }
 
   @Post('login')
   @ApiOperation({

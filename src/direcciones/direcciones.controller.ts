@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 
 import {
   ApiBearerAuth,
@@ -21,7 +21,29 @@ import { Roles } from '../auth/decorators/roles/roles.decorator.js';
 @Controller('direcciones')
 export class DireccionesController {
   constructor(private readonly direccionesService: DireccionesService) {}
-
+  @Get()
+  @Roles('CLIENTE')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Consultar direcciones del cliente',
+    description: 'Obtiene las direcciones del cliente autenticado.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Direcciones obtenidas correctamente.',
+  })
+  obtenerTodas(
+    @Req()
+    solicitud: Request & {
+      user: {
+        id: number;
+        email: string | null;
+        rol: string;
+      };
+    },
+  ) {
+    return this.direccionesService.obtenerTodas(solicitud.user.id);
+  }
   @Post()
   @Roles('CLIENTE')
   @UseGuards(JwtAuthGuard, RolesGuard)
