@@ -11,6 +11,16 @@ import { CerrarCajaDto } from './dto/cerrar-caja.dto.js';
 @Injectable()
 export class CajasService {
   constructor(private readonly prisma: PrismaService) {}
+  async obtenerAbierta(usuarioId: number) {
+    const caja = await this.prisma.caja.findFirst({
+      where: {
+        usuarioId,
+        fechaCierre: null,
+      },
+    });
+
+    return caja;
+  }
 
   async abrir(usuarioId: number, datos: AbrirCajaDto) {
     // 1. Comprobar que el usuario exista

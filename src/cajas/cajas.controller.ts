@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseIntPipe,
   Post,
@@ -31,6 +32,38 @@ import { Roles } from '../auth/decorators/roles/roles.decorator.js';
 @Controller('cajas')
 export class CajasController {
   constructor(private readonly cajasService: CajasService) {}
+
+  @Get('abierta')
+  @Roles('ADMIN', 'CAJERO')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Consultar caja abierta',
+    description: 'Obtiene la caja abierta del usuario autenticado.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Caja abierta encontrada o null si no existe.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autenticado.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Solo ADMIN y CAJERO pueden consultar su caja.',
+  })
+  obtenerAbierta(
+    @Req()
+    solicitud: Request & {
+      user: {
+        id: number;
+        email: string | null;
+        rol: string;
+      };
+    },
+  ) {
+    return this.cajasService.obtenerAbierta(solicitud.user.id);
+  }
 
   @Post('abrir')
   @Roles('ADMIN', 'CAJERO')
