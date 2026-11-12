@@ -11,6 +11,60 @@ import { CrearVentaDto } from './dto/crear-venta.dto.js';
 export class VentasService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async obtenerHistorial(fecha: string, usuarioId: number) {
+    // Comprobar que la fecha tenga el formato YYYY-MM-DD
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      throw new BadRequestException(
+        'La fecha debe tener el formato YYYY-MM-DD',
+      );
+    }
+
+    const [año, mes, dia] = fecha.split('-').map(Number);
+
+    // Comprobar que sea una fecha real
+    const fechaValidada = new Date(Date.UTC(año, mes - 1, dia));
+
+    if (
+      fechaValidada.getUTCFullYear() !== año ||
+      fechaValidada.getUTCMonth() !== mes - 1 ||
+      fechaValidada.getUTCDate() !== dia
+    ) {
+      throw new BadRequestException('La fecha ingresada no es válida');
+    }
+
+    // El negocio utiliza el horario de Bolivia (UTC-4)
+    const inicio = new Date(`${fecha}T00:00:00.000-04:00`);
+    const fin = new Date(inicio.getTime() + 24 * 60 * 60 * 1000);
+
+    return this.prisma.venta.findMany({
+      where: {
+        creadoEn: {
+          gte: inicio,
+          lt: fin,
+        },
+        caja: {
+          usuarioId,
+        },
+      },
+      include: {
+        detalles: {
+          include: {
+            producto: {
+              select: {
+                id: true,
+                nombre: true,
+                codigo: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        creadoEn: 'desc',
+      },
+    });
+  }
+
   async crear(datos: CrearVentaDto) {
     // 1. Buscar la caja
     const caja = await this.prisma.caja.findUnique({

@@ -1,9 +1,20 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+
+import type { Request } from 'express';
 
 import {
   ApiBearerAuth,
   ApiBody,
   ApiOperation,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -21,6 +32,52 @@ import { Roles } from '../auth/decorators/roles/roles.decorator.js';
 export class VentasController {
   constructor(private readonly ventasService: VentasService) {}
 
+  // Consultar historial de ventas
+  @Get('historial')
+  @Roles('ADMIN', 'CAJERO')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Consultar historial de ventas',
+    description:
+      'Obtiene las ventas del usuario autenticado para una fecha específica.',
+  })
+  @ApiQuery({
+    name: 'fecha',
+    required: true,
+    example: '2026-11-12',
+    description: 'Fecha de consulta en formato YYYY-MM-DD.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Historial de ventas obtenido correctamente.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Fecha inválida.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autenticado.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Solo ADMIN y CAJERO pueden consultar el historial.',
+  })
+  historial(
+    @Req()
+    solicitud: Request & {
+      user: {
+        id: number;
+        email: string | null;
+        rol: string;
+      };
+    },
+    @Query('fecha') fecha: string,
+  ) {
+    return this.ventasService.obtenerHistorial(fecha, solicitud.user.id);
+  }
+
+  // Registrar una venta
   @Post()
   @Roles('ADMIN', 'CAJERO')
   @UseGuards(JwtAuthGuard, RolesGuard)
