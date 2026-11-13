@@ -14,7 +14,7 @@ export class MockPayService {
 
     const secretKey =
       this.configService.getOrThrow<string>('MOCKPAY_SECRET_KEY');
-
+    console.log('1. Iniciando petición a MockPay');
     const respuesta = await fetch(`${baseUrl}/api/v1/payments`, {
       method: 'POST',
       headers: {
@@ -28,7 +28,7 @@ export class MockPayService {
         webhook_url: 'https://pos-ecommerce-hibrido.onrender.com/pagos/webhook',
       }),
     });
-
+    console.log('2. MockPay respondió:', respuesta.status);
     if (!respuesta.ok) {
       const error = await respuesta.text();
 
@@ -36,6 +36,7 @@ export class MockPayService {
     }
 
     const datosRespuesta = await respuesta.json();
+    console.log('3. Respuesta procesada correctamente');
 
     return datosRespuesta;
   }
