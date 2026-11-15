@@ -10,9 +10,60 @@ import { ActualizarProductoDto } from './dto/actualizar-producto.dto.js';
 @Injectable()
 export class ProductosService {
   constructor(private readonly prisma: PrismaService) {}
+  private async calcularStockReservado(
+    productos: { id: number; stock: number }[],
+  ) {
+    const stockReservado = new Map<number, number>();
+
+    if (productos.length === 0) {
+      return stockReservado;
+    }
+
+    const ids = productos.map((producto) => producto.id);
+
+    const reservas = await this.prisma.reserva.findMany({
+      where: {
+        estado: 'ACTIVA',
+        expiraEn: {
+          gt: new Date(),
+        },
+        pedido: {
+          detalles: {
+            some: {
+              productoId: {
+                in: ids,
+              },
+            },
+          },
+        },
+      },
+      include: {
+        pedido: {
+          include: {
+            detalles: true,
+          },
+        },
+      },
+    });
+
+    for (const reserva of reservas) {
+      for (const detalle of reserva.pedido.detalles) {
+        if (!ids.includes(detalle.productoId)) continue;
+
+        const cantidadActual = stockReservado.get(detalle.productoId) ?? 0;
+
+        stockReservado.set(
+          detalle.productoId,
+          cantidadActual + detalle.cantidad,
+        );
+      }
+    }
+
+    return stockReservado;
+  }
 
   async obtenerTodos(soloActivos?: boolean) {
-    return this.prisma.producto.findMany({
+    const productos = await this.prisma.producto.findMany({
       where:
         soloActivos === undefined
           ? undefined
@@ -23,9 +74,21 @@ export class ProductosService {
         nombre: 'asc',
       },
     });
+
+    const reservas = await this.calcularStockReservado(productos);
+
+    return productos.map((producto) => {
+      const stockReservado = reservas.get(producto.id) ?? 0;
+
+      return {
+        ...producto,
+        stockReservado,
+        stockDisponible: Math.max(0, producto.stock - stockReservado),
+      };
+    });
   }
   async obtenerCatalogoPublico() {
-    return this.prisma.producto.findMany({
+    const productos = await this.prisma.producto.findMany({
       where: {
         activo: true,
       },
@@ -41,6 +104,17 @@ export class ProductosService {
         stock: true,
         categoriaId: true,
       },
+    });
+
+    const reservas = await this.calcularStockReservado(productos);
+
+    return productos.map((producto) => {
+      const stockReservado = reservas.get(producto.id) ?? 0;
+
+      return {
+        ...producto,
+        stock: Math.max(0, producto.stock - stockReservado),
+      };
     });
   }
   async obtenerPorId(id: number) {
