@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   Param,
   ParseIntPipe,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -16,6 +18,7 @@ import {
   ApiParam,
   ApiResponse,
   ApiTags,
+  ApiQuery,
 } from '@nestjs/swagger';
 
 import type { Request } from 'express';
@@ -85,8 +88,32 @@ export class CajasController {
     status: 403,
     description: 'Solo ADMIN puede consultar todas las cajas.',
   })
-  obtenerTodas() {
-    return this.cajasService.obtenerTodas();
+  @ApiQuery({ name: 'pagina', required: false, type: Number })
+  @ApiQuery({ name: 'limite', required: false, type: Number })
+  @ApiQuery({ name: 'estado', required: false, type: String })
+  @ApiQuery({ name: 'usuarioId', required: false, type: String })
+  @ApiQuery({ name: 'desde', required: false, type: String })
+  @ApiQuery({ name: 'hasta', required: false, type: String })
+  obtenerTodas(
+    @Query('pagina', new DefaultValuePipe(1), ParseIntPipe)
+    pagina: number,
+    @Query('limite', new DefaultValuePipe(10), ParseIntPipe)
+    limite: number,
+    @Query('estado')
+    estado?: string,
+    @Query('usuarioId')
+    usuarioId?: string,
+    @Query('desde') desde?: string,
+    @Query('hasta') hasta?: string,
+  ) {
+    return this.cajasService.obtenerTodas({
+      pagina,
+      limite,
+      estado,
+      usuarioId,
+      desde,
+      hasta,
+    });
   }
   @Post('abrir')
   @Roles('ADMIN', 'CAJERO')

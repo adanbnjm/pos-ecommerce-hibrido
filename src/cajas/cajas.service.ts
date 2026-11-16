@@ -21,53 +21,123 @@ export class CajasService {
 
     return caja;
   }
-  async obtenerTodas() {
-    return this.prisma.caja.findMany({
-      include: {
-        usuario: {
-          select: {
-            id: true,
-            nombre: true,
-            celular: true,
-            email: true,
+  async obtenerTodas(filtros: {
+    pagina: number;
+    limite: number;
+    estado?: string;
+    usuarioId?: string;
+    desde?: string;
+    hasta?: string;
+  }) {
+    const { pagina, limite, estado, usuarioId, desde, hasta } = filtros;
+
+    if (pagina < 1 || limite < 1 || limite > 100) {
+      throw new BadRequestException(
+        'La página debe ser positiva y el límite debe estar entre 1 y 100.',
+      );
+    }
+
+    if (estado && !['ABIERTA', 'CERRADA'].includes(estado)) {
+      throw new BadRequestException('El estado debe ser ABIERTA o CERRADA.');
+    }
+
+    const idUsuario = usuarioId ? Number(usuarioId) : undefined;
+
+    if (usuarioId && (!Number.isInteger(idUsuario) || Number(idUsuario) < 1)) {
+      throw new BadRequestException('El ID del usuario no es válido.');
+    }
+
+    const fechaDesde = desde ? new Date(`${desde}T00:00:00.000Z`) : undefined;
+    const fechaHasta = hasta ? new Date(`${hasta}T23:59:59.999Z`) : undefined;
+
+    if (
+      (desde && Number.isNaN(fechaDesde?.getTime())) ||
+      (hasta && Number.isNaN(fechaHasta?.getTime()))
+    ) {
+      throw new BadRequestException('El formato de las fechas no es válido.');
+    }
+
+    if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
+      throw new BadRequestException(
+        'La fecha inicial no puede ser posterior a la fecha final.',
+      );
+    }
+    const where = {
+      ...(estado === 'ABIERTA' ? { fechaCierre: null } : {}),
+      ...(estado === 'CERRADA' ? { fechaCierre: { not: null } } : {}),
+      ...(idUsuario ? { usuarioId: idUsuario } : {}),
+      ...(fechaDesde || fechaHasta
+        ? {
+            fechaApertura: {
+              ...(fechaDesde ? { gte: fechaDesde } : {}),
+              ...(fechaHasta ? { lte: fechaHasta } : {}),
+            },
+          }
+        : {}),
+    };
+    const [cajas, total] = await Promise.all([
+      this.prisma.caja.findMany({
+        where,
+        include: {
+          usuario: {
+            select: {
+              id: true,
+              nombre: true,
+              celular: true,
+              email: true,
+            },
           },
-        },
-        ventas: {
-          include: {
-            detalles: {
-              include: {
-                producto: {
-                  select: {
-                    id: true,
-                    nombre: true,
-                    codigo: true,
+          ventas: {
+            include: {
+              detalles: {
+                include: {
+                  producto: {
+                    select: {
+                      id: true,
+                      nombre: true,
+                      codigo: true,
+                    },
                   },
                 },
               },
             },
           },
-        },
-        movimientos: {
-          include: {
-            solicitante: {
-              select: {
-                id: true,
-                nombre: true,
+          movimientos: {
+            include: {
+              solicitante: {
+                select: {
+                  id: true,
+                  nombre: true,
+                },
               },
-            },
-            autorizador: {
-              select: {
-                id: true,
-                nombre: true,
+              autorizador: {
+                select: {
+                  id: true,
+                  nombre: true,
+                },
               },
             },
           },
         },
+        orderBy: {
+          fechaApertura: 'desc',
+        },
+        skip: (pagina - 1) * limite,
+        take: limite,
+      }),
+
+      this.prisma.caja.count({ where }),
+    ]);
+
+    return {
+      datos: cajas,
+      paginacion: {
+        total,
+        pagina,
+        limite,
+        totalPaginas: Math.ceil(total / limite),
       },
-      orderBy: {
-        fechaApertura: 'desc',
-      },
-    });
+    };
   }
 
   async abrir(usuarioId: number, datos: AbrirCajaDto) {
