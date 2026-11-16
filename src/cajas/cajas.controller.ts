@@ -94,6 +94,7 @@ export class CajasController {
   @ApiQuery({ name: 'usuarioId', required: false, type: String })
   @ApiQuery({ name: 'desde', required: false, type: String })
   @ApiQuery({ name: 'hasta', required: false, type: String })
+  @ApiQuery({ name: 'nombreUsuario', required: false, type: String })
   obtenerTodas(
     @Query('pagina', new DefaultValuePipe(1), ParseIntPipe)
     pagina: number,
@@ -105,6 +106,8 @@ export class CajasController {
     usuarioId?: string,
     @Query('desde') desde?: string,
     @Query('hasta') hasta?: string,
+    @Query('nombreUsuario')
+    nombreUsuario?: string,
   ) {
     return this.cajasService.obtenerTodas({
       pagina,
@@ -113,6 +116,7 @@ export class CajasController {
       usuarioId,
       desde,
       hasta,
+      nombreUsuario,
     });
   }
   @Post('abrir')

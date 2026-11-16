@@ -28,8 +28,10 @@ export class CajasService {
     usuarioId?: string;
     desde?: string;
     hasta?: string;
+    nombreUsuario?: string;
   }) {
-    const { pagina, limite, estado, usuarioId, desde, hasta } = filtros;
+    const { pagina, limite, estado, usuarioId, desde, hasta, nombreUsuario } =
+      filtros;
 
     if (pagina < 1 || limite < 1 || limite > 100) {
       throw new BadRequestException(
@@ -71,6 +73,16 @@ export class CajasService {
             fechaApertura: {
               ...(fechaDesde ? { gte: fechaDesde } : {}),
               ...(fechaHasta ? { lte: fechaHasta } : {}),
+            },
+          }
+        : {}),
+      ...(nombreUsuario?.trim()
+        ? {
+            usuario: {
+              nombre: {
+                contains: nombreUsuario.trim(),
+                mode: 'insensitive' as const,
+              },
             },
           }
         : {}),
