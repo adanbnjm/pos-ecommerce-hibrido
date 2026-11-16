@@ -74,7 +74,11 @@ export class VentasController {
     },
     @Query('fecha') fecha: string,
   ) {
-    return this.ventasService.obtenerHistorial(fecha, solicitud.user.id);
+    return this.ventasService.obtenerHistorial(
+      fecha,
+      solicitud.user.id,
+      solicitud.user.rol,
+    );
   }
 
   // Registrar una venta

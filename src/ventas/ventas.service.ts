@@ -11,7 +11,7 @@ import { CrearVentaDto } from './dto/crear-venta.dto.js';
 export class VentasService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async obtenerHistorial(fecha: string, usuarioId: number) {
+  async obtenerHistorial(fecha: string, usuarioId: number, rol: string) {
     // Comprobar que la fecha tenga el formato YYYY-MM-DD
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
       throw new BadRequestException(
@@ -42,9 +42,13 @@ export class VentasService {
           gte: inicio,
           lt: fin,
         },
-        caja: {
-          usuarioId,
-        },
+        ...(rol === 'ADMIN'
+          ? {}
+          : {
+              caja: {
+                usuarioId,
+              },
+            }),
       },
       include: {
         detalles: {
