@@ -374,12 +374,22 @@ export class PedidosService {
         },
       });
 
-      return pedido;
+      // Crear el pago pendiente del pedido manual
+      const pago = await tx.pago.create({
+        data: {
+          pedidoId: pedido.id,
+          monto: total,
+          estado: 'PENDIENTE',
+        },
+      });
+
+      return { pedido, pago };
     });
 
     return {
       mensaje: 'Pedido manual creado correctamente',
-      pedido: resultado,
+      pedido: resultado.pedido,
+      pago: resultado.pago,
     };
   }
   async expirarReserva(usuarioId: number, reservaId: number) {
