@@ -21,6 +21,54 @@ export class CajasService {
 
     return caja;
   }
+  async obtenerTodas() {
+    return this.prisma.caja.findMany({
+      include: {
+        usuario: {
+          select: {
+            id: true,
+            nombre: true,
+            celular: true,
+            email: true,
+          },
+        },
+        ventas: {
+          include: {
+            detalles: {
+              include: {
+                producto: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                    codigo: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        movimientos: {
+          include: {
+            solicitante: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+            autorizador: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        fechaApertura: 'desc',
+      },
+    });
+  }
 
   async abrir(usuarioId: number, datos: AbrirCajaDto) {
     // 1. Comprobar que el usuario exista

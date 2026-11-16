@@ -65,6 +65,29 @@ export class CajasController {
     return this.cajasService.obtenerAbierta(solicitud.user.id);
   }
 
+  @Get()
+  @Roles('ADMIN')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Consultar todas las cajas',
+    description:
+      'Obtiene todas las cajas, abiertas y cerradas, con sus ventas y movimientos. Disponible únicamente para ADMIN.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Listado de todas las cajas.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'No autenticado.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Solo ADMIN puede consultar todas las cajas.',
+  })
+  obtenerTodas() {
+    return this.cajasService.obtenerTodas();
+  }
   @Post('abrir')
   @Roles('ADMIN', 'CAJERO')
   @UseGuards(JwtAuthGuard, RolesGuard)
